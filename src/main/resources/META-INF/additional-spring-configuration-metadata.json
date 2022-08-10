@@ -1,0 +1,29 @@
+{
+  "properties": [
+    {
+      "name": "wx.appId",
+      "type": "java.lang.String",
+      "description": "微信公众号开发者appId."
+    },
+    {
+      "name": "wx.appSecret",
+      "type": "java.lang.String",
+      "description": "微信公众号开发者密码."
+    },
+    {
+      "name": "wx.wxToken",
+      "type": "java.lang.String",
+      "description": "微信公众号服务器配置令牌."
+    },
+    {
+      "name": "msg.id",
+      "type": "java.lang.String",
+      "description": "模板消息id."
+    },
+    {
+      "name": "userList",
+      "type": "java.util.List",
+      "description": "发送消息用户."
+    }
+  ]
+}

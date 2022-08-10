@@ -1,0 +1,16 @@
+server:
+  port: 52100
+spring:
+  application:
+    name: wx-public
+forest:
+  variables:
+    url: https://api.weixin.qq.com
+wx:
+  appId: wxcf167fb0b054ae27
+  appSecret: bb838eb790a84e03094c1c12c4edaef7
+  wxToken: chk381114
+  oneMsgId: cmxLuNrfavcedY5BduEp36kxfDLZ1lXGFIYYUg85B94
+  userList:
+    - oyMR56ElGaky47SBfKJy57cg_k4c
+    - oyMR56FmtlAS_Ou-ms4ZfSShv39Q
