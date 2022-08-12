@@ -3,7 +3,6 @@ package com.chk.wx.schedule;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.chk.wx.client.WeatherClient;
-import com.chk.wx.client.Words;
 import com.chk.wx.client.WxClient;
 import com.chk.wx.config.WxConfig;
 import com.chk.wx.entity.Weather;
@@ -40,7 +39,6 @@ public class WxSchedule {
     private final WxClient wxClient;
     private final WeatherClient weatherClient;
     private final WxService wxService;
-    private final Words words;
 
     /**
      * 定时获取微信token
@@ -61,11 +59,9 @@ public class WxSchedule {
     /**
      * 定时发送模板消息
      **/
-    @Scheduled(cron = "0 0 7 * * ?")
+    @Scheduled(cron = "0 30 7 * * ?")
     //@Scheduled(cron = "0 * * * * ?")
     public void sendOne() {
-        //每日一句
-        //String words1 = getWords();
         //获取天气
         Weather weather = getWeather();
         //模板消息内容
@@ -79,6 +75,12 @@ public class WxSchedule {
         wxService.push(wxRequest);
     }
 
+    /**
+     * 数据封装
+     * @author chk
+     * @param weather weather
+     * @return java.util.LinkedHashMap<java.lang.String,java.lang.Object>
+     **/
     @NotNull
     private static LinkedHashMap<String, Object> getData(Weather weather) {
         LinkedHashMap<String, Object> data = new LinkedHashMap<>();
@@ -122,6 +124,11 @@ public class WxSchedule {
         return data;
     }
 
+    /**
+     * 获取每日天气
+     * @author chk
+     * @return com.chk.wx.entity.Weather
+     **/
     private Weather getWeather() {
         Weather data = new Weather();
         //获取实况天气
@@ -142,12 +149,6 @@ public class WxSchedule {
         //最低气温
         data.setNightTemp(casts.getStr("nighttemp"));
         return data;
-    }
-
-    private String getWords(){
-        String data = words.get();
-        System.out.println(data);
-        return null;
     }
 
 }

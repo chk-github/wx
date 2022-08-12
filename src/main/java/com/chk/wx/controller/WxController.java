@@ -1,15 +1,13 @@
 package com.chk.wx.controller;
 
-import com.chk.wx.entity.WxRequest;
 import com.chk.wx.global.Unpack;
 import com.chk.wx.service.WxService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.HashMap;
 
 /**
  * WxController
@@ -37,7 +35,6 @@ public class WxController {
      * @param nonce     随机数
      * @param echostr   随机字符串
      * @author chk
-     * @date 2022/4/14 15:23
      **/
     @GetMapping("/check")
     public void check(HttpServletRequest request,
@@ -45,7 +42,7 @@ public class WxController {
                       String signature,
                       String timestamp,
                       String nonce,
-                      String echostr) {
+                      String echostr) throws IOException {
         wxService.check(request, response, signature, timestamp, nonce, echostr);
     }
 
@@ -54,11 +51,20 @@ public class WxController {
      *
      * @param request 请求
      * @author chk
-     * @date 2022/04/14 16:03
      **/
     @Unpack
     @PostMapping("/check")
     public String attentionInfo(HttpServletRequest request) throws Exception {
         return wxService.attentionInfo(request);
+    }
+
+    /**
+     * 创建自定义菜单
+     * @author chk
+     * @param map 自定义菜单
+     **/
+    @PostMapping("/createMenu")
+    public void createMenu(@RequestBody HashMap<String,Object> map){
+        wxService.createMenu(map);
     }
 }

@@ -12,6 +12,7 @@ import com.chk.wx.entity.vo.ReceiveInfoVo;
 import com.chk.wx.entity.vo.SendInfoVo;
 import com.chk.wx.service.WxService;
 import com.chk.wx.utils.SignUtil;
+import com.chk.wx.utils.TimeUtil;
 import com.dtflys.forest.Forest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,8 +26,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -61,6 +62,11 @@ public class WxServiceImpl implements WxService {
      */
     private static final String SUBSCRIBE = "subscribe";
 
+    /**
+     * 自定义菜单事件
+     **/
+    private static final String CLICK="CLICK";
+
     private final WxConfig wxConfig;
     private final WxClient wxClient;
 
@@ -79,23 +85,31 @@ public class WxServiceImpl implements WxService {
      * @param nonce     随机数
      * @param echostr   随机字符串
      * @author chk
-     * @date 2022/4/14 15:23
      **/
     @Override
-    public void check(HttpServletRequest request, HttpServletResponse response, String signature, String timestamp, String nonce, String echostr) {
-        log.info("接收到来自微信的验证请求");
-        try {
-            if (SignUtil.checkSignature(wxConfig.getWxToken(), signature, timestamp, nonce)) {
-                //原样返回echostr参数内容,表示接入成功
-                PrintWriter out = response.getWriter();
-                out.print(echostr);
-                out.close();
-            } else {
-                log.info("这里存在非法请求！");
-            }
-        } catch (Exception e) {
-            log.info("", e);
+    public void check(HttpServletRequest request, HttpServletResponse response, String signature, String timestamp, String nonce, String echostr) throws IOException {
+        log.info("验证消息是否来自微信服务器");
+        if (SignUtil.checkSignature(wxConfig.getWxToken(), signature, timestamp, nonce)) {
+            //原样返回echostr参数内容,表示接入成功
+            PrintWriter out = response.getWriter();
+            out.print(echostr);
+            out.close();
+        } else {
+            log.info("这里存在非法请求！");
         }
+    }
+
+    /**
+     * 创建自定义菜单
+     *
+     * @author chk
+     **/
+    @Override
+    public void createMenu(HashMap<String,Object> map) {
+        //发送请求
+        wxClient.createMenu(
+                wxConfig.getToken(),map,
+                (data, request, response) -> log.info("创建自定义菜单成功{}",data));
     }
 
     /**
@@ -103,7 +117,6 @@ public class WxServiceImpl implements WxService {
      *
      * @param request 请求
      * @author chk
-     * @date 2022/04/14 16:03
      **/
     @Override
     public String attentionInfo(HttpServletRequest request) throws Exception {
@@ -134,14 +147,23 @@ public class WxServiceImpl implements WxService {
                 send.setMsgType("<![CDATA[text]]>");
                 switch (attentionInfoVo.getMsgType()) {
                     case MESSAGE_EVENT://事件推送
-                        //关注
+                        //关注事件
                         if (SUBSCRIBE.equals(attentionInfoVo.getEvent())) {
                             send.setContent("<![CDATA[欢迎关注颜总de专属小助手]]>");
+                        }
+                        //自定义菜单事件
+                        if(CLICK.equals(attentionInfoVo.getEvent())){
+                            String eventKey = attentionInfoVo.getEventKey();
+                            if("MARK".equals(eventKey)){
+                                String msg = "<![CDATA[" + "今天是我们在一起的第" + TimeUtil.differentDays(new SimpleDateFormat("yyyy-MM-dd").parse("2022-06-04"), new Date()) + "天" + "\n" +
+                                        "今天距离你的生日还剩" + TimeUtil.differentDays(new Date(), new SimpleDateFormat("yyyy-MM-dd").parse("2022-12-19")) + "天" +
+                                        "]]>";
+                                send.setContent(msg);
+                            }
                         }
                         break;
                     case MESSAGE_TEXT://文本消息
                         System.out.println(attentionInfoVo.getToUserName());
-                        List<String> userOpenId = getUserOpenId();
                         send.setContent(String.format("<![CDATA[%s]]>", attentionInfoVo.getContent()));
                         break;
                     case MESSAGE_IMAGE://图片消息
@@ -164,32 +186,30 @@ public class WxServiceImpl implements WxService {
      * 模板消息推送
      *
      * @author chk
-     * @date 2022/4/14 17:00
      **/
     @Override
     public boolean push(WxRequest wxRequest) {
-        boolean flag=false;
+        boolean flag = false;
         log.info("推送模板消息");
         //1.获取公众号微信列表
-        //List<String> userOpenId = getUserOpenId();
         //2.将文件上传到微信素材库(先这样干后面有需要再改动)
-        if(ObjectUtil.isNotEmpty(wxRequest.getFile())){
+        if (ObjectUtil.isNotEmpty(wxRequest.getFile())) {
             try {
                 JSONObject execute = Forest.post("https://api.weixin.qq.com/cgi-bin/media/uploadimg")
                         .addQuery("access_token", wxConfig.getToken())
                         .contentTypeMultipartFormData()
                         .addFile("media", wxRequest.getFile().getInputStream(), wxRequest.getFile().getOriginalFilename(), wxRequest.getFile().getContentType())
                         .execute(JSONObject.class);
-                if(ObjectUtil.isNotEmpty(execute.get("url"))){
-                    wxRequest.setUrl(execute.get("url",String.class));
+                if (ObjectUtil.isNotEmpty(execute.get("url"))) {
+                    wxRequest.setUrl(execute.get("url", String.class));
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         //3.封装消息体
-        if(StrUtil.isNotBlank(wxRequest.getData())){
-            flag=packageMsgBody(wxRequest, wxRequest.getToUsers());
+        if (StrUtil.isNotBlank(wxRequest.getData())) {
+            flag = packageMsgBody(wxRequest, wxRequest.getToUsers());
         }
         return flag;
     }
@@ -199,7 +219,6 @@ public class WxServiceImpl implements WxService {
      * @param userOpenId 关注用户的openId
      * @return boolean
      * @author chk
-     * @date 2022/4/14 18:09
      **/
     private boolean packageMsgBody(WxRequest wxRequest, List<String> userOpenId) {
         if (!ObjectUtils.isEmpty(userOpenId) && !ObjectUtils.isEmpty(wxRequest)) {
@@ -230,7 +249,6 @@ public class WxServiceImpl implements WxService {
      *
      * @param map 消息体
      * @author chk
-     * @date 2022/4/14 18:15
      **/
     private void sendMsg(LinkedHashMap<String, Object> map) {
         if (wxConfig.isToken()) {
@@ -244,8 +262,9 @@ public class WxServiceImpl implements WxService {
      * 获取用户openId
      *
      * @author chk
-     * @date 2022/4/14 17:51
      **/
+
+    @SuppressWarnings("unused")
     private List<String> getUserOpenId() {
         AtomicReference<List<String>> openIds = new AtomicReference<>();
         if (wxConfig.isToken()) {

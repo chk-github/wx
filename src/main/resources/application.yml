@@ -1,5 +1,5 @@
 server:
-  port: 52100
+  port: 80
 spring:
   application:
     name: wx-public
